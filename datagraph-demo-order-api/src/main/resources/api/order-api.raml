@@ -1,0 +1,162 @@
+#%RAML 1.0
+title: Order API
+version: v1.0
+
+types:
+  Order:
+    properties:
+      orderNumber?:
+        description: Order Number
+        type: number
+      orderDate?:
+        description: Order Date
+        type: string
+      requiredDate?:
+        description: Required Date
+        type: string
+      shippedDate?:
+        description: Shipped Date
+        type: string
+      status?:
+        description: Status
+        type: string
+      comments?:
+        description: Comments
+        type: string
+      customerNumber?:
+        description: Customer Number
+        type: number
+      products:
+        description: List of products
+        type: OrderProduct[]
+
+  OrderProduct:
+    properties:
+      productCode?:
+        type: string
+        description: Product Code
+      quantity?:
+        type: number
+        description: Quantity ordered
+      price?:
+        type: number
+        description: Price of product   
+
+  Customer:
+    properties:
+      customerNumber?:
+        type: number
+        description: Customer Number
+      customerName?:
+        type: string
+        description: Customer Name
+      contactLastName?:
+        type: string
+        description: Contact Last Name
+      contactFirstName?:
+        type: string
+        description: Contact First Name
+      phone?:
+        type: string
+        description: Phone
+      addressLine1?:
+        type: string
+        description: Address Line 1
+      addressLine2?:
+        type: string
+        description: Address Line 2
+      city?:
+        type: string
+        description: City
+      state?:
+        type: string
+        description: State
+      postalCode?:
+        type: string
+        description: Postal Code
+      country?:
+        type: string
+        description: Country
+      salesRepEmployeeNumber?:
+        type: number
+        description: Sales Employee Number
+      creditLimit?:
+        type: number
+        description: Credit Limit
+
+/orders:
+  get:
+    description: Get Orders
+    queryParameters:
+      offset:
+        description: Offset to be fetched
+        type: integer
+        minimum: 0
+      limit:
+        description: Number of Orders to be fetched
+        type: integer
+        minimum: 1
+        maximum: 100
+    responses:
+      200:
+        body:
+          application/json:
+            type: Order[]
+
+/orders/{orderNumber}:
+  get:
+    description: Get Order by Order Number
+    responses:
+      200:
+        body:
+          application/json:
+            type: Order
+
+  delete:
+    description: Delete Order by Order Number
+    responses:
+      200:
+        body:
+          application/json:
+
+/orders/customers/{customerNumber}:
+  get:
+    description: Get Orders by Customer Number
+    queryParameters:
+      offset:
+        description: Offset to be fetched
+        type: integer
+        minimum: 0
+      limit:
+        description: Number of Orders to be fetched
+        type: integer
+        minimum: 1
+        maximum: 100
+    responses:
+      200:
+        body:
+          application/json:
+            type: Order[]
+  post:
+    description: Create an Order
+    body:
+      application/json:
+        type: Order
+    responses:
+      200:
+        body:
+          application/json:
+            example:
+              {
+                "message": "Order was created",
+                "orderNumber": 123
+              }
+
+/customers/{customerNumber}:
+  get:
+    description: Get Customers by Customer Number
+    responses:
+      200:
+        body:
+          application/json:
+            type: Customer

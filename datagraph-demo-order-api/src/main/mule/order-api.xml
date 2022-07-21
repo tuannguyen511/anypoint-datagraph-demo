@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <http:listener-config name="order-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="order-api-config" api="order-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="order-api-main">
+        <http:listener config-ref="order-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="order-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="delete:\orders\(orderNumber):order-api-config">
+        <logger level="INFO" message="delete:\orders\(orderNumber):order-api-config" />
+		<db:delete doc:name="Delete" doc:id="df470269-f5ff-410f-990a-ab228202e430" config-ref="Database_Config">
+			<db:sql ><![CDATA[DELETE FROM orders WHERE orderNumber = :orderNumber]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderNumber: attributes.uriParams.orderNumber as Number
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform>
+            <ee:message >
+				<ee:set-payload ><![CDATA[output application/json
+---
+{
+	"message": "Order was deleted"
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+            </ee:variables>
+        </ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="93d724f4-d89e-489b-9400-4e7e3fcedaf7" message="Return payload: #[payload]" />
+    </flow>
+    <flow name="get:\orders:order-api-config">
+        <logger level="INFO" message="get:\orders:order-api-config" />
+        <db:select doc:name="Select Order" doc:id="dabc86bb-01bd-4cca-8328-e00efc1dd7a9" config-ref="Database_Config" queryTimeout="30" target="orders">
+			<db:sql ><![CDATA[SELECT * FROM orders LIMIT :limit OFFSET :offset]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"offset": attributes.queryParams.offset as Number,
+	"limit": attributes.queryParams.limit as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="5099e041-93f6-42d5-beed-2d381f4b2a23" >
+			<when expression="#[not isEmpty(vars.orders)]">
+				<ee:transform doc:name="Transform Message" doc:id="802b26b7-99ae-4204-95d6-88b7ea45a3f4">
+					<ee:message>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="orderDetailsQuery" ><![CDATA[%dw 2.0
+output application/java
+
+var orderNumbers = (vars.orders.orderNumber default []) joinBy ','
+---
+"SELECT * FROM orderdetails WHERE orderNumber in ($(orderNumbers)) ORDER BY orderNumber"]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<db:select doc:name="Select OrderDetails" doc:id="7aab2e0d-0ea1-4a06-ad28-f05cf35eaec5" config-ref="Database_Config" queryTimeout="30" target="orderDetails" >
+					<db:sql ><![CDATA[#[vars.orderDetailsQuery]]]></db:sql>
+				</db:select>
+				<ee:transform doc:name="Transform Message" doc:id="3b28cb5f-cd20-4c94-bba7-d3b932af7aef">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var orderDetails = vars.orderDetails groupBy (item) -> item.orderNumber
+---
+vars.orders map(orderItem) -> {
+	orderNumber: orderItem.orderNumber,
+	customerNumber: orderItem.customerNumber,
+	comments: orderItem.comments,
+	orderDate: orderItem.orderDate,
+	requiredDate: orderItem.requiredDate,
+	shippedDate: orderItem.shippedDate,
+	status: orderItem.status,
+	products: do {
+		var detail = orderDetails[(orderItem.orderNumber as String)]
+		---
+		detail map {
+			orderNumber: $.orderNumber,
+			productCode: $.productCode,
+			quantity: $.quantityOrdered,
+			price: $.priceEach
+		}
+	}
+}
+]]></ee:set-payload>
+			</ee:message></ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="3e516512-6c66-415f-b9de-f4db73a9eb3e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="35299559-2f0b-46b6-b011-5001c5e7f508" message="Return payload: #[payload]" />
+    </flow>
+    <flow name="get:\orders\customers\(customerNumber):order-api-config">
+        <logger level="INFO" message="get:\orders\customers\(customerNumber):order-api-config" />
+    <db:select doc:name="Select Order" doc:id="cc879b8d-13de-4202-bef2-dcbc095e6c26" config-ref="Database_Config" queryTimeout="30" target="orders">
+			<db:sql ><![CDATA[SELECT * FROM orders WHERE customerNumber = :customerNumber LIMIT :limit OFFSET :offset]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"customerNumber": attributes.uriParams.customerNumber,
+	"offset": attributes.queryParams.offset as Number,
+	"limit": attributes.queryParams.limit as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="8e1ce9ca-f14c-4afc-812e-0b08faf19d86" >
+			<when expression="#[not isEmpty(vars.orders)]">
+				<ee:transform doc:name="Transform Message" doc:id="67fbc4e6-d1eb-44b6-a6ca-43dbe7e969cb">
+					<ee:message>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="orderDetailsQuery" ><![CDATA[%dw 2.0
+output application/java
+
+var orderNumbers = (vars.orders.orderNumber default []) joinBy ','
+---
+"SELECT * FROM orderdetails WHERE orderNumber in ($(orderNumbers)) ORDER BY orderNumber"]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<db:select doc:name="Select OrderDetails" doc:id="98ad6fe6-32b7-4e92-be55-e18f9afc1db5" config-ref="Database_Config" queryTimeout="30" target="orderDetails" >
+					<db:sql ><![CDATA[#[vars.orderDetailsQuery]]]></db:sql>
+				</db:select>
+				<ee:transform doc:name="Transform Message" doc:id="67568f89-ac66-453f-b11d-70dc1c979120">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var orderDetails = vars.orderDetails groupBy (item) -> item.orderNumber
+---
+vars.orders map(orderItem) -> {
+	orderNumber: orderItem.orderNumber,
+	customerNumber: orderItem.customerNumber,
+	comments: orderItem.comments,
+	orderDate: orderItem.orderDate,
+	requiredDate: orderItem.requiredDate,
+	shippedDate: orderItem.shippedDate,
+	status: orderItem.status,
+	products: do {
+		var detail = orderDetails[(orderItem.orderNumber as String)]
+		---
+		detail map {
+			orderNumber: $.orderNumber,
+			productCode: $.productCode,
+			quantity: $.quantityOrdered,
+			price: $.priceEach
+		}
+	}
+}
+]]></ee:set-payload>
+			</ee:message></ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="01bd1570-6f85-40e9-b745-076e9ae7a580" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="898fb331-c757-49db-838f-f69c9d053d13" message="Return payload: #[payload]" />
+    </flow>
+    <flow name="get:\orders\(orderNumber):order-api-config">
+        <logger level="INFO" message="get:\orders\(orderNumber):order-api-config" />
+        <db:select doc:name="Select Order" doc:id="be6946c3-764c-4e03-b77e-9fcab1076aa6" config-ref="Database_Config" queryTimeout="30" target="orders">
+			<db:sql ><![CDATA[SELECT * FROM orders WHERE orderNumber = :orderNumber]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"orderNumber": attributes.uriParams.'orderNumber'
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="bb2d4d5e-f37c-45af-a4e9-2ff44cdbe36a" >
+			<when expression="#[not isEmpty(vars.orders)]">
+				<db:select doc:name="Select OrderDetails" doc:id="6e54efdd-efe7-4eb7-aac5-36e631f6f111" config-ref="Database_Config" queryTimeout="30" target="orderDetails" >
+					<db:sql ><![CDATA[SELECT * FROM orderdetails WHERE orderNumber = :orderNumber]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	"orderNumber": vars.orders[0].'orderNumber'
+}]]]></db:input-parameters>
+				</db:select>
+				<ee:transform doc:name="Transform Message" doc:id="0dd310fd-cef5-44d3-bc58-ddd7d714764b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	orderNumber: vars.orders[0].orderNumber,
+	customerNumber: vars.orders[0].customerNumber,
+	comments: vars.orders[0].comments,
+	orderDate: vars.orders[0].orderDate,
+	requiredDate: vars.orders[0].requiredDate,
+	shippedDate: vars.orders[0].shippedDate,
+	status: vars.orders[0].status,
+	products: vars.orderDetails map{
+		orderNumber: $.orderNumber,
+		productCode: $.productCode,
+		quantity: $.quantityOrdered,
+		price: $.priceEach
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="bf8e777c-8dcc-435f-92a8-941267b594ba" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="66d9acb3-db26-4746-a13f-c5bc4a122880" message="Return payload: #[payload]" />
+    </flow>
+    <flow name="post:\orders\customers\(customerNumber):application\json:order-api-config">
+        <ee:transform>
+            <ee:variables>
+                <ee:set-variable variableName="customerNumber"><![CDATA[attributes.uriParams.'customerNumber']]></ee:set-variable>
+				<ee:set-variable variableName="order" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+				<ee:set-variable variableName="orderDetails" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.products]]></ee:set-variable>
+				<ee:set-variable variableName="orderNumber" ><![CDATA[%dw 2.0
+output application/java
+---
+1000000000 + randomInt(1000000000)]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <db:insert doc:name="Insert Order" doc:id="f6fac8f2-ea53-4564-be4b-1e80a75c8e52" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert  into `orders`(`orderNumber`,`orderDate`,`requiredDate`,`shippedDate`,`status`,`comments`,`customerNumber`) 
+values (:orderNumber, :orderDate, :requiredDate, :shippedDate, :status, :comments, :customerNumber)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	orderNumber: vars.orderNumber,
+	orderDate: vars.order.orderDate,
+	requiredDate: vars.order.requiredDate,
+	shippedDate: vars.order.shippedDate,
+	status: vars.order.status,
+	comments: vars.order.comments,
+	customerNumber: vars.customerNumber
+}]]]></db:input-parameters>
+		</db:insert>
+		<db:bulk-insert doc:name="Bulk insert OrderDetails" doc:id="e67917e7-198c-43b4-ae7c-9bfccb36c6e2" config-ref="Database_Config">
+			<db:bulk-input-parameters ><![CDATA[#[output application/java
+---
+vars.orderDetails map(item) -> { 
+	orderNumber: vars.orderNumber,
+	productCode: item.productCode,
+	quantityOrdered: item.quantity,
+	priceEach: item.price,
+	orderLineNumber: 1
+}]]]></db:bulk-input-parameters>
+			<db:sql ><![CDATA[insert into `orderdetails`(`orderNumber`,`productCode`,`quantityOrdered`,`priceEach`,`orderLineNumber`) 
+values (:orderNumber, :productCode, :quantityOrdered, :priceEach, :orderLineNumber)]]></db:sql>
+		</db:bulk-insert>
+		<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Order was created",
+  orderNumber: vars.orderNumber
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" doc:name="Logger" doc:id="b29b277a-bda4-44f7-b828-a3194c5df781" message="Return payload: #[payload]" />
+    </flow>
+    <flow name="get:\customers\(customerNumber):order-api-config">
+        <logger level="INFO" message="get:\customers\(customerNumber):order-api-config" />
+			<db:select doc:name="Select" doc:id="cfc5d5a8-a130-4faf-9924-2e4f3f1ee318" config-ref="Database_Config" queryTimeout="30">
+			<db:sql><![CDATA[SELECT * FROM customers WHERE customerNumber = :customerNumber]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	"customerNumber": attributes.uriParams.'customerNumber'
+}]]]></db:input-parameters>
+		</db:select>
+			<ee:transform doc:name="Transform Message" doc:id="7e69efc7-df8b-4489-a2a6-e55b760b8577">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (not isEmpty(payload)) 
+	payload[0]
+else {
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="a0c07715-a7f5-4770-8bbe-09145c4fc1cc" message="Return payload: #[payload]" />
+    </flow>
+</mule>

@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+    <http:listener-config name="product-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="product-api-config" api="product-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <ee:object-store-caching-strategy name="Caching_Strategy" doc:name="Caching Strategy" doc:id="256ae439-5bce-4cd0-a694-0d5d3a19f4ba" keyGenerationExpression="#[&quot;productID-&quot; ++ attributes.uriParams.'productCode']" >
+		<os:private-object-store alias="ProductObjectStore" maxEntries="1000" entryTtl="30" entryTtlUnit="DAYS" expirationInterval="10" />
+	</ee:object-store-caching-strategy>
+	<flow name="product-api-main">
+        <http:listener config-ref="product-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="product-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\products:product-api-config">
+        <logger level="INFO" message="get:\products:product-api-config" />
+		<db:select doc:name="Select" doc:id="05f6b08c-d64d-44d0-84a0-106b3a80fdc3" config-ref="Database_Config" queryTimeout="30">
+			<db:sql ><![CDATA[SELECT * FROM products LIMIT :limit OFFSET :offset]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"offset": attributes.queryParams.offset as Number,
+	"limit": attributes.queryParams.limit as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="bf3d9d36-818a-498d-939c-0ea1be13f230" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map{
+	productCode: $.productCode,
+	productName: $.productName,
+	productDescription: $.productDescription,
+	productLine: $.productLine,
+	productVendor: $.productVendor,
+	quantityInStock: $.quantityInStock,
+	price: $.MSRP,
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="4cfff4c4-4984-4bb1-b369-e872a87077b2" message="Return payload: #[payload]"/>
+    </flow>
+	<flow name="get:\products\(productCode):product-api-config">
+        <logger level="INFO" message="get:\products\(productCode):product-api-config" />
+		<ee:cache doc:name="Cache" doc:id="ed6108ca-00b0-4fc1-a1d3-06df0dc4c00a" cachingStrategy-ref="Caching_Strategy">
+			<logger level="INFO" doc:name="Logger" doc:id="32b1edb0-603a-498a-b5ab-04cb367aa130" message="Executing select query..."/>
+			<db:select doc:name="Select" doc:id="b7134798-d0c1-4cfe-a40f-ee70db521b2e" config-ref="Database_Config" queryTimeout="30">
+			<db:sql><![CDATA[SELECT * FROM products WHERE productCode = :productCode]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	"productCode": attributes.uriParams.'productCode'
+}]]]></db:input-parameters>
+		</db:select>
+			<ee:transform doc:name="Transform Message" doc:id="7b33b03e-c8ed-4e90-a3cd-03f240ee9e5b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (not isEmpty(payload)) {
+	productCode: payload[0].productCode,
+	productName: payload[0].productName,
+	productDescription: payload[0].productDescription,
+	productLine: payload[0].productLine,
+	productVendor: payload[0].productVendor,
+	quantityInStock: payload[0].quantityInStock,
+	price: payload[0].MSRP,
+
+}
+else {
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		</ee:cache>
+		<logger level="INFO" doc:name="Logger" doc:id="a77a9cba-0b55-4bb4-bded-a3dc5334c1ec" message="Return payload: #[payload]" />
+    </flow>
+</mule>

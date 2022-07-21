@@ -1,0 +1,56 @@
+#%RAML 1.0
+title: Product API
+version: v1.0
+
+types:
+  Product:
+    properties:
+      productCode:
+        type: string
+        description: Product Code
+      productName?:
+        type: string
+        description: Product Name
+      productLine?:
+        type: string
+        description: Product Line
+      productVendor?:
+        type: string
+        description: Product Vendor
+      productDescription?:
+        type: string
+        description: Product Description
+      quantityInStock?:
+        type: number
+        description: Quantity in stock
+      price?:
+        type: number
+        description: Price
+
+/products:
+  get:
+    description: Get products
+    queryParameters:
+      offset:
+        description: Offset to be fetched
+        type: integer
+        minimum: 0
+      limit:
+        description: Number of Products to be fetched
+        type: integer
+        minimum: 1
+        maximum: 100
+    responses:
+      200:
+        body:
+          application/json:
+            type: Product[]
+
+  /{productCode}:
+    get:
+      description: Get products by product code
+      responses:
+        200:
+          body:
+            application/json:
+              type: Product

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <script src="script.js" defer></script>
+  <style>
+    table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+    }
+  </style>
+</head>
+<body>
+  <select id="order-select">
+    <option selected hidden>Select an Order</option>
+  </select>
+
+  <br/><br/>
+  <table>
+    <tr>
+      <td><b>Order Number</b></td>
+      <td><div id="orderNumber"></div></td>
+    </tr>
+    <tr>
+      <td><b>Shipped Date</b></td>
+      <td><div id="shippedDate"></div></td>
+    </tr>
+    <tr>
+      <td><b>Order Date</b></td>
+      <td><div id="orderDate"></div></td>
+    </tr>
+    <tr>
+      <td><b>Required Date</b></td>
+      <td><div id="requiredDate"></div></td>
+    </tr>
+    <tr>
+      <td><b>Customer Number</b></td>
+      <td><div id="customerNumber"></div></td>
+    </tr>
+    <tr>
+      <td><b>Comments</b></td>
+      <td><div id="comments"></div></td>
+    </tr>
+  </table>
+
+  <br/>
+  <div><b>List of products</b></div>
+  <div id="products-list"></div>
+
+</body>
+</html>
