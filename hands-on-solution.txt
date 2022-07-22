@@ -1,0 +1,244 @@
+Hands-on solutions
+
+
+* Scenario 1: Query list of Products
+
+query queryProducts {
+  products(limit: 10, offset: 0) {
+    productCode
+    productName
+    productLine
+    productVendor
+    productDescription
+    quantityInStock
+    price
+  }
+}
+
+
+* Scenario 2: Query Product by Product Code
+
+Note: In this example, we are using:
+- Query variables ($code)
+- Alias for query (product)
+- Alias for field (suggestedPrice)
+
+** Query part:
+query queryProductsByCode($code: String!) {
+  product: productsByProductCode(productCode: $code) {
+    productCode
+    productName
+    productLine
+    productVendor
+    quantityInStock
+    suggestedPrice: price
+    productDescription
+  }
+}
+
+** Query variables part:
+{
+  "code": "S700_2610"
+}
+
+
+* Scenario 3: Query list of Orders
+
+** Query part:
+query queryOrders($limit: Int!, $offset: Int!) {
+  orders(limit: $limit, offset: $offset) {
+    orderNumber
+    customerNumber
+    orderDate
+    requiredDate
+    shippedDate
+    status
+    comments
+    products {
+      price
+      quantity
+      product {
+        productCode
+        productName
+        productLine
+        productVendor
+        productDescription
+      }
+    }
+  }
+}
+
+** Query variables part:
+{
+  "limit": 10,
+  "offset": 0
+}
+
+
+* Scenario 4: Query Order by Order Number
+
+Note: In this example, we are using Fragment.
+
+fragment orderFragment on Order {
+  orderNumber
+  customerNumber
+  orderDate
+  requiredDate
+  shippedDate
+  status
+  comments
+  products {
+    price
+    quantity
+    product {
+      productCode
+      productName
+      productLine
+      productVendor
+      productDescription
+    }
+  }
+}
+
+query queryOrderByID {
+  order: ordersByOrderNumber(orderNumber: "10107") {
+    ...orderFragment
+  }
+}
+
+
+* Scenario 5: Query Order by Customer Number
+
+** Query part: (Keep the Fragment in Scenario 4)
+query queryOrderByCustomerNumber($limit: Int!, $offset: Int!, $customerNumber: String!) {
+  orders: ordersCustomersByCustomerNumber(limit: $limit, offset: $offset, customerNumber: $customerNumber) {
+    ...orderFragment
+  }
+}
+
+** Query variables part:
+{
+  "limit": 100,
+  "offset": 0,
+  "customerNumber": "103"
+}
+
+
+* Scenario 6: Create an Order, then check the Order just created
+
+** Query part:
+mutation createOrder($customerNumber: String!, $input: OrderInput!) {
+  createOrdersCustomersByCustomerNumber(customerNumber: $customerNumber, input: $input)
+}
+
+** Query variables part:
+{
+  "customerNumber": "408",
+  "input":
+  {
+    "comments": "new order from customer 480",
+    "orderDate": "2003-02-24",
+    "requiredDate": "2003-03-03",
+    "shippedDate": "2003-02-26",
+    "status": "Shipped",
+    "products":
+    [
+      {
+        "productCode": "S10_1678",
+        "quantity": 1,
+        "price": 81.35
+      },
+      {
+        "productCode": "S10_2016",
+        "quantity": 2,
+        "price": 105.86
+      }
+    ]
+  }
+}
+
+Copy the orderNumber in response and check the Order just created:
+
+** Query part:
+query queryOrderByID {
+  order: ordersByOrderNumber(orderNumber: "put_the_OrderNumber_here") {
+    orderNumber
+    customerNumber
+    orderDate
+    requiredDate
+    shippedDate
+    status
+    comments
+    products {
+      price
+      quantity
+      product {
+        productCode
+        productName
+        productLine
+        productVendor
+        productDescription
+      }
+    }
+  }
+}
+
+You can delete Order just created by using this query:
+
+** Query part:
+mutation deleteOrder{
+  deleteOrdersByOrderNumber(orderNumber: "put_the_OrderNumber_here")
+}
+
+
+* Scenario 7: Query Customer and related Orders by Customer Number
+
+** Query part:
+query queryCustomerAndOrdersInfo($customerNumber: String!) {
+  customer: customersByCustomerNumber(customerNumber: $customerNumber) {
+    customerNumber
+    customerName
+    contactLastName
+    contactFirstName
+    phone
+    addressLine1
+    addressLine2
+    city
+    state
+    postalCode
+    country
+    salesRepEmployeeNumber
+    creditLimit
+  }
+  orders: ordersCustomersByCustomerNumber(customerNumber: $customerNumber, limit: 100, offset: 0) {
+    orderNumber
+    customerNumber
+    orderDate
+    requiredDate
+    shippedDate
+    status
+    comments
+    products {
+      price
+      quantity
+      product {
+        productCode
+        productName
+        productLine
+        productVendor
+        productDescription
+      }
+    }
+  }
+}
+
+** Query variables part:
+{
+  "customerNumber": "103"
+}
+
+
+
+
+
+
