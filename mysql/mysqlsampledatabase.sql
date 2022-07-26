@@ -1,12 +1,7 @@
 /*
-host: sql6.freemysqlhosting.net:3306
-username: sql6507454
-password: 2DudWVGS9t
-database: sql6507454
+Register a free MySQL DB from freemysqlhosting.net
 */
 
-
-USE `sql6507454`;
 
 /*Table structure for table `customers` */
 
